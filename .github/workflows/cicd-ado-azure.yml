@@ -1,0 +1,32 @@
+name: YASH-DevOps-Serverless/CICD-ADO-Azure
+on:
+  push:
+    branches:
+    - develop
+    - release
+    - master
+jobs:
+  Build-Build:
+    name: Build Job
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+    - uses: First-Devops-organisation/central-repo/.github/actions/devops_build_pipeline@main
+  Dev-Azure_Net_API_Dev:
+    needs:
+    - Build-Build
+    runs-on: ubuntu-latest
+    environment:
+      name: Dev
+    if: (success() && github.ref == 'refs/heads/develop') && github.RUN_NUMBER == 1
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+    - name: download artifact
+      uses: actions/download-artifact@v4.1.0
+#     # This action only supports checking out GitHub repositories
+#     - uses: actions/checkout@v4.1.0
+#       with:
+#         repository: DevXOps-CICD-Common_Templates
+    - uses: First-Devops-organisation/central-repo/.github/actions/devops_deploy@main
