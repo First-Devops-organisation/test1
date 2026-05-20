@@ -1,0 +1,27 @@
+name: YASH-DevOps-Serverless/YASH-DevOps-Serverless-CI
+on:
+  workflow_dispatch:
+env:
+  ResourceName: yashfun
+  ResourceType: azf
+  Vault: tfs-keyvault1
+  system_debug: 'false'
+jobs:
+  Job_1:
+    name: Agent job 1
+    runs-on: windows-2019
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+    - name: 'Azure PowerShell script: FilePath'
+      uses: azure/login@v1.6.0
+      with:
+        creds: "${{ secrets.AZURE_CREDENTIALS }}"
+        enable-AzPSSession: true
+    - name: 'Azure PowerShell script: FilePath'
+      uses: azure/powershell@v1.4.0
+      with:
+        inlineScript: IMPORT_APIM_API.ps1 -Environment "dev" -ProductNameOverride "testgit" -ResourceGroupOverride "Rg-Serverless" -APIMNameOverride "test-api01" -BaseURLOverride "/api"
+        errorActionPreference: stop
+        failOnStandardError: false
+        azPSVersion: latest
