@@ -1,0 +1,6 @@
+name: Build_PublishArtifacts
+runs:
+  using: composite
+  steps:
+  - name: 'Publish Artifact: drop'
+    uses: actions/upload-artifact@v4.1.0
