@@ -1,0 +1,7 @@
+name: Build_dotnetpublish
+runs:
+  using: composite
+  steps:
+  - name: dotnet publish
+    run: dotnet publish --configuration ${{ env.BuildConfiguration }} --output ${{ runner.temp }}
+    shell: bash
