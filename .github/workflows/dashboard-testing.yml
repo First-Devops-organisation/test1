@@ -1,0 +1,138 @@
+name: YASH-DevOps-Serverless/dashboard-testing
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+jobs:
+  PublishDashboard:
+    name: Fix & publish dashboard to Extensions tab
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+    - name: Checkout repo
+      uses: actions/checkout@v4.1.0
+    - name: Verify index.html
+      run: |-
+        if [ ! -f "${{ github.workspace }}/index.html" ]; then
+          echo "❌ index.html not found in repo root."
+          exit 1
+        fi
+        echo "✅ index.html found."
+    - name: Install Python deps
+      run: pip install beautifulsoup4 cssutils --quiet --break-system-packages
+    - name: Transform HTML (resolve vars, inline CSS, strip wrapper)
+      run: |-
+        python3 << 'PYEOF'
+        import re, logging, cssutils
+        from pathlib import Path
+        from bs4 import BeautifulSoup
+        cssutils.log.setLevel(logging.CRITICAL)
+        src = Path("${{ github.workspace }}/index.html")
+        out = Path("${{ runner.temp }}/dashboard.html")
+        html = src.read_text(encoding="utf-8")
+        soup = BeautifulSoup(html, "html.parser")
+        # ── Step A: Extract CSS variable definitions ──────────
+        # Finds all --variable: value; pairs from :root or body
+        css_vars = {}
+        for style_tag in soup.find_all("style"):
+            css_text = style_tag.string or ""
+            # Match :root { --var: value; } blocks
+            root_blocks = re.findall(r':root\s*\{([^}]+)\}', css_text, re.DOTALL)
+            body_blocks = re.findall(r'body\s*\{([^}]+)\}', css_text, re.DOTALL)
+            for block in root_blocks + body_blocks:
+                for match in re.finditer(r'(--[\w-]+)\s*:\s*([^;]+);', block):
+                    css_vars[match.group(1).strip()] = match.group(2).strip()
+        print(f"  Found {len(css_vars)} CSS variables: {list(css_vars.keys())[:10]}")
+        def resolve_vars(value, depth=0):
+            """Recursively resolve var(--x) references."""
+            if depth > 10 or "var(" not in value:
+                return value
+            def replacer(m):
+                var_name = m.group(1).strip()
+                fallback = m.group(2).strip() if m.group(2) else ""
+                resolved = css_vars.get(var_name, fallback)
+                return resolved if resolved else m.group(0)
+            result = re.sub(r'var\(\s*(--[\w-]+)(?:\s*,\s*([^)]+))?\s*\)', replacer, value)
+            if "var(" in result:
+                return resolve_vars(result, depth + 1)
+            return result
+        # ── Step B: Collect all CSS rules ─────────────────────
+        all_css = ""
+        for tag in soup.find_all("style"):
+            all_css += (tag.string or "") + "\n"
+            tag.decompose()
+        sheet = cssutils.parseString(all_css)
+        rules = {}
+        for rule in sheet:
+            if rule.type == rule.STYLE_RULE:
+                selector = rule.selectorText.strip()
+                props = {}
+                for prop in rule.style:
+                    val = resolve_vars(prop.value)
+                    props[prop.name] = val
+                if selector in rules:
+                    rules[selector].update(props)
+                else:
+                    rules[selector] = props
+        # ── Step C: Apply rules as inline style= attributes ───
+        applied = skipped = 0
+        for selector, props in rules.items():
+            if ":" in selector or "@" in selector or selector.startswith("*"):
+                skipped += 1
+                continue
+            try:
+                elements = soup.select(selector)
+                for el in elements:
+                    existing = {}
+                    if el.get("style"):
+                        for decl in el["style"].split(";"):
+                            decl = decl.strip()
+                            if ":" in decl:
+                                k, v = decl.split(":", 1)
+                                existing[k.strip()] = resolve_vars(v.strip())
+                    merged = {**props, **existing}
+                    el["style"] = "; ".join(f"{k}: {v}" for k, v in merged.items())
+                    applied += 1
+            except Exception:
+                skipped += 1
+        # ── Step D: Resolve any remaining var() in existing style= attrs
+        for el in soup.find_all(style=True):
+            el["style"] = resolve_vars(el["style"])
+        # ── Step E: Extract only the <body> inner content ─────
+        # ADO wraps output in its own page — sending full <html>
+        # causes ADO to print the tag as raw text at the top.
+        body = soup.find("body")
+        if body:
+            # Apply body-level inline styles to a wrapper div
+            body_style = body.get("style", "")
+            wrapper = soup.new_tag("div", style=body_style)
+            for child in list(body.children):
+                wrapper.append(child.extract())
+            final_html = str(wrapper)
+        else:
+            final_html = "".join(str(c) for c in soup.contents)
+        out.write_text(final_html, encoding="utf-8")
+        print(f"✅ Done — {applied} elements styled, {skipped} selectors skipped.")
+        print(f"   CSS variables resolved: {len(css_vars)}")
+        print(f"   Output: {out}")
+        PYEOF
+    - name: Attach to Extensions Tab
+      run: |-
+        echo "##vso[task.addattachment type=Distributedtask.Core.Summary;name=Pipeline Dashboard;]${{ runner.temp }}/dashboard.html"
+        echo "✅ Attached. Open the Extensions tab to see your dashboard."
+    - name: Stage artifacts
+      run: |-
+        mkdir -p "${{ runner.temp }}/dashboard"
+        cp "${{ github.workspace }}/index.html" \
+           "${{ runner.temp }}/dashboard/index.html"
+        cp "${{ runner.temp }}/dashboard.html" \
+           "${{ runner.temp }}/dashboard/dashboard-inlined.html"
+    - name: Save as Artifact
+      uses: actions/upload-artifact@v4.1.0
+      with:
+        name: dashboard
+        path: "${{ runner.temp }}/dashboard"
