@@ -1,0 +1,14 @@
+name: Build_dotnettest
+runs:
+  using: composite
+  steps:
+  # The dotnet CLI does not accept glob patterns. Consider using a solution file to act on multiple projects at once.
+  - name: dotnet test
+    run: dotnet test **/*.csproj --logger trx --results-directory "${{ runner.temp }}" --configuration ${{ env.BuildConfiguration }} --collect "XPlat Code Coverage;Format=cobertura,opencover" -- RunConfiguration.DisableAppDomain=true
+    shell: bash
+  - name: dotnet test
+    uses: NasAmin/trx-parser@v0.5.0
+    if: always()
+    with:
+      TRX_PATH: "${{ runner.temp }}"
+      REPO_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
