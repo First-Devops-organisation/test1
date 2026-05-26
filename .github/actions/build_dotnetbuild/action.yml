@@ -1,0 +1,8 @@
+name: Build_dotnetbuild
+runs:
+  using: composite
+  steps:
+  # The dotnet CLI does not accept glob patterns. Consider using a solution file to act on multiple projects at once.
+  - name: dotnet build
+    run: dotnet build **/*.csproj --configuration ${{ env.BuildConfiguration }}
+    shell: bash
