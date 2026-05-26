@@ -1,0 +1,8 @@
+name: Build_dotnetrestorefeed
+runs:
+  using: composite
+  steps:
+  # The dotnet CLI does not accept glob patterns. Consider using a solution file to act on multiple projects at once.
+  - name: dotnet restore
+    run: dotnet restore **/*.csproj --configfile "${{ github.workspace }}/Src/nuget.config"
+    shell: bash
