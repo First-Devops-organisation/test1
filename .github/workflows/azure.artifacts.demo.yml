@@ -1,0 +1,59 @@
+name: YASH-DevOps-Serverless/azure.artifacts.demo
+on:
+  workflow_dispatch:
+    inputs:
+      jarUrl:
+        description: Direct URL to JAR file
+        default: https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar
+        type: string
+        required: false
+      groupId:
+        description: Maven Group ID
+        default: com.mycompany.test
+        type: string
+        required: false
+      artifactId:
+        description: Maven Artifact ID
+        default: my-test-package
+        type: string
+        required: false
+      version:
+        description: Maven Version
+        default: 1.0.0
+        type: string
+        required: false
+env:
+  adoOrgName: YashTech-DevOps
+  googleArtifactRegistryUrl: us-central1-maven.pkg.dev/my-gcp-project/my-maven-repo
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+    - name: Authenticate with Google Cloud
+      run: |-
+        echo "Setting up Google Cloud authentication..."
+        echo "${{ env.GCP_SERVICE_ACCOUNT_KEY }}" > gcp_key.json
+        gcloud auth activate-service-account --key-file=gcp_key.json
+        # Set the GOOGLE_APPLICATION_CREDENTIALS env var so Maven picks it up automatically
+        echo "##vso[task.setvariable variable=GOOGLE_APPLICATION_CREDENTIALS]${{ env.pwd }}/gcp_key.json"
+      shell: bash
+    - name: Download and Push JAR to Google Artifact Registry
+      run: |-
+        set -e
+        echo "Downloading JAR from ${{ parameters.jarUrl }}..."
+        wget -O package.jar "${{ parameters.jarUrl }}"
+        echo "Deploying to Google Artifact Registry..."
+        # We reference pom_sample.xml so Maven loads the Google Wagon extension
+        mvn deploy:deploy-file \
+          -f pom_sample.xml \
+          -DgroupId="${{ parameters.groupId }}" \
+          -DartifactId="${{ parameters.artifactId }}" \
+          -Dversion="${{ parameters.version }}" \
+          -Dpackaging="jar" \
+          -Dfile="package.jar" \
+          -DrepositoryId="artifact-registry" \
+          -Durl="artifactregistry://${{ env.googleArtifactRegistryUrl }}"
+        echo "Deployment successful!"
+      shell: bash
