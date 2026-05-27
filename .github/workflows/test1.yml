@@ -10,3 +10,26 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: PowerShell Script
+        run: |-
+          Get-ChildItem -Path "D:\a\r1\a\_SSPM (5)" -Recurse -Include '*.zip'
+          Get-Location
+      - name: 'Extract files '
+        run: 'echo "⚠️ Unmapped ADO task: task — add it to task-type-map.json"'
+      - name: PowerShell Script
+        run: |-
+          # Write your PowerShell commands here.
+
+          Get-ChildItem -Path "D:\a\r1\a\_SSPM (5)" -Recurse -Include '*.zip'
+      - name: Replace tokens
+        run: 'echo "⚠️ Unmapped ADO task: task — add it to task-type-map.json"'
+      - name: PowerShell Script
+        run: |-
+          Get-Location
+          ##Get-ChildItem -Path "D:\a\r1\a\_SSPM (5)" -Recurse -Include '*.zip'
+      - name: Archive D:\a\r1\a\_SSPM (5)\drop
+        run: 'echo "⚠️ Unmapped ADO task: task — add it to task-type-map.json"'
+      - name: 'Upload Release Artifact D:\a\r1\a\_SSPM (5)\drop\TodoistApp.Blazor.zip '
+        run: 'echo "⚠️ Unmapped ADO task: task — add it to task-type-map.json"'
+      - name: 'Azure Web App Deploy: demoappasp'
+        run: 'echo "⚠️ Unmapped ADO task: task — add it to task-type-map.json"'
