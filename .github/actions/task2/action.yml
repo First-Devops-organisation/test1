@@ -1,0 +1,16 @@
+name: task2
+runs:
+  using: composite
+  steps:
+  - name: PowerShell Script
+    run: |-
+      # Write your PowerShell commands here.
+
+      Write-Host "Hello World"
+    shell: powershell
+  - name: PowerShell Script
+    run: |-
+      # Write your PowerShell commands here.
+
+      Write-Host "Hello World"
+    shell: powershell
