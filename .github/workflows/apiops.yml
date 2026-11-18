@@ -1,0 +1,33 @@
+name: YASH-DevOps-Serverless/APIOPS
+on:
+  push:
+    branches:
+    - none
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+    - name: Install .NET 6 SDK
+      uses: actions/setup-dotnet@v4.0.0
+      with:
+        dotnet-version: 6.0.x
+    - name: Azure CLI
+      uses: azure/login@v1.6.0
+      with:
+        creds: "${{ secrets.AZURE_CREDENTIALS }}"
+    - name: Azure CLI
+      run: |-
+        dotnet restore src/ArmTemplates/ArmTemplates.csproj
+        dotnet run extract --extractorConfig src/ArmTemplates/extractorparams.json --project src/ArmTemplates/ArmTemplates.csproj
+      shell: cmd
+    - run: |-
+        cd ${{ github.workspace }}/Output
+        ls
+      shell: powershell
+    - name: Publish pipeline artifact
+      uses: actions/upload-artifact@v4.1.0
+      with:
+        name: artifacts-from-portal
+        path: "${{ runner.temp }}"
